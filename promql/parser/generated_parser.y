@@ -39,6 +39,7 @@ import (
     lblList     []labels.Label
     strings     []string
     series      []SequenceValue
+    exemplars   []Exemplar
     histogram   *histogram.FloatHistogram
     descriptors map[string]interface{}
     bucket_set  []float64
@@ -72,6 +73,7 @@ SEMICOLON
 SPACE
 STRING
 TIMES
+HASH
 
 // Histogram Descriptors.
 %token histogramDescStart
@@ -180,6 +182,7 @@ START_METRIC_SELECTOR
 %type <label> label_set_item
 %type <strings> grouping_label_list grouping_labels maybe_grouping_labels
 %type <series> series_item series_values
+%type <exemplars> exemplar_item exemplars
 %type <histogram> histogram_series_value
 %type <descriptors> histogram_desc_map histogram_desc_item
 %type <bucket_set> bucket_set bucket_set_list
@@ -688,14 +691,28 @@ label_set_item  : IDENTIFIER EQL STRING
  * The syntax is described in https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/#series
  */
 
-series_description: metric series_values
+series_description: metric series_values exemplars
                         {
                         yylex.(*parser).generatedParserResult = &seriesDescription{
-                                labels: $1,
-                                values: $2,
+                                labels:    $1,
+                                values:    $2,
+                                exemplars: $3,
                         }
                         }
                 ;
+
+exemplars       : /*empty*/
+                        { $$ = []Exemplar{} }
+                | exemplars SPACE exemplar_item
+                        { $$ = append($1, $3...) }
+                | exemplars SPACE
+                        { $$ = $1 }
+                | error
+                        { yylex.(*parser).unexpected("exemplars", ""); $$ = nil }
+                ;
+
+exemplar_item   : HASH SPACE label_set signed_or_unsigned_number
+                        { $$ = []Exemplar{{Labels: $3, Value:  $4}}}
 
 series_values   : /*empty*/
                         { $$ = []SequenceValue{} }

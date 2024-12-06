@@ -225,24 +225,25 @@ func parseLoad(lines []string, i int) (int, *loadCmd, error) {
 			i--
 			break
 		}
-		metric, vals, err := parseSeries(defLine, i)
+		metric, vals, exemplars, err := parseSeries(defLine, i)
 		if err != nil {
 			return i, nil, err
 		}
 		cmd.set(metric, vals...)
+		cmd.setExemplars(metric, exemplars...)
 	}
 	return i, cmd, nil
 }
 
-func parseSeries(defLine string, line int) (labels.Labels, []parser.SequenceValue, error) {
-	metric, vals, err := parser.ParseSeriesDesc(defLine)
+func parseSeries(defLine string, line int) (labels.Labels, []parser.SequenceValue, []parser.Exemplar, error) {
+	metric, vals, exemplars, err := parser.ParseSeriesDesc(defLine)
 	if err != nil {
 		parser.EnrichParseError(err, func(parseErr *parser.ParseErr) {
 			parseErr.LineOffset = line
 		})
-		return labels.Labels{}, nil, err
+		return labels.Labels{}, nil, nil, err
 	}
-	return metric, vals, nil
+	return metric, vals, exemplars, nil
 }
 
 func (t *test) parseEval(lines []string, i int) (int, *evalCmd, error) {
@@ -361,7 +362,7 @@ func (t *test) parseEval(lines []string, i int) (int, *evalCmd, error) {
 			cmd.expect(0, parser.SequenceValue{Value: f})
 			break
 		}
-		metric, vals, err := parseSeries(defLine, i)
+		metric, vals, _, err := parseSeries(defLine, i)
 		if err != nil {
 			return i, nil, err
 		}
@@ -470,6 +471,25 @@ func (cmd *loadCmd) set(m labels.Labels, vals ...parser.SequenceValue) {
 	}
 	cmd.defs[h] = samples
 	cmd.metrics[h] = m
+}
+
+// set a sequence of exemplars for the given metric.
+func (cmd *loadCmd) setExemplars(m labels.Labels, ex ...parser.Exemplar) {
+	h := m.Hash()
+
+	exemplars := make([]exemplar.Exemplar, 0, len(ex))
+	ts := testStartTime
+	for _, e := range ex {
+		exemplars = append(exemplars, exemplar.Exemplar{
+			Labels: e.Labels,
+			Value:  e.Value,
+			Ts:     ts.UnixNano() / int64(time.Millisecond/time.Nanosecond),
+			HasTs:  true,
+		})
+		ts = ts.Add(cmd.gap)
+	}
+
+	cmd.exemplars[h] = exemplars
 }
 
 // append the defined time series to the storage.

@@ -4429,7 +4429,7 @@ func TestParseHistogramSeries(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, vals, err := ParseSeriesDesc(test.input)
+			_, vals, _, err := ParseSeriesDesc(test.input)
 			if test.expectedError != "" {
 				require.EqualError(t, err, test.expectedError)
 				return
@@ -4501,7 +4501,7 @@ func TestHistogramTestExpression(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			expression := test.input.TestExpression()
 			require.Equal(t, test.expected, expression)
-			_, vals, err := ParseSeriesDesc("{} " + expression)
+			_, vals, _, err := ParseSeriesDesc("{} " + expression)
 			require.NoError(t, err)
 			require.Len(t, vals, 1)
 			canonical := vals[0].Histogram
@@ -4513,7 +4513,7 @@ func TestHistogramTestExpression(t *testing.T) {
 
 func TestParseSeries(t *testing.T) {
 	for _, test := range testSeries {
-		metric, vals, err := ParseSeriesDesc(test.input)
+		metric, vals, _, err := ParseSeriesDesc(test.input)
 
 		// Unexpected errors are always caused by a bug.
 		require.NotEqual(t, err, errUnexpected, "unexpected error occurred")

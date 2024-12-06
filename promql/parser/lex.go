@@ -181,6 +181,7 @@ var ItemTypeStr = map[ItemType]string{
 	BLANK:         "_",
 	TIMES:         "x",
 	SPACE:         "<space>",
+	HASH:          "#",
 
 	SUB:       "-",
 	ADD:       "+",
@@ -545,6 +546,9 @@ func lexHistogram(l *Lexer) stateFn {
 	case r == 'x':
 		l.emit(TIMES)
 		return lexNumber
+	case r == '#':
+		l.emit(HASH)
+		return lexNumber
 	case isDigit(r):
 		l.backup()
 		return lexNumber
@@ -712,6 +716,10 @@ func lexValueSequence(l *Lexer) stateFn {
 		l.next()
 		l.emit(OPEN_HIST)
 		return lexHistogram
+	case r == '{' && l.peek() != '{':
+		l.emit(LEFT_BRACE)
+		l.braceOpen = true
+		return lexInsideBraces
 	case isSpace(r):
 		l.emit(SPACE)
 		lexSpace(l)
@@ -721,6 +729,8 @@ func lexValueSequence(l *Lexer) stateFn {
 		l.emit(SUB)
 	case r == 'x':
 		l.emit(TIMES)
+	case r == '#':
+		l.emit(HASH)
 	case r == '_':
 		l.emit(BLANK)
 	case isDigit(r) || (r == '.' && isDigit(l.peek())):

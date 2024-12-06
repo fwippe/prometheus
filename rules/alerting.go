@@ -17,6 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/prometheus/prometheus/model/exemplar"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -494,6 +495,17 @@ func (r *AlertingRule) Eval(ctx context.Context, queryOffset time.Duration, ts t
 	}
 
 	return vec, nil
+}
+
+// EvalWithExemplars is currently a pass through to Eval
+func (r *AlertingRule) EvalWithExemplars(ctx context.Context, queryOffset time.Duration, evaluationTime time.Time, queryFunc QueryFunc,
+	_ ExemplarQueryFunc, externalUrl *url.URL, limit int) (promql.Vector, []exemplar.QueryResult, error) {
+	// TODO: Right now EvalWithExemplars doesn't emit exemplars given the fact that alert state label isn't as straight forward to handle.
+	vector, err := r.Eval(ctx, queryOffset, evaluationTime, queryFunc, externalUrl, limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	return vector, nil, nil
 }
 
 // State returns the maximum state of alert instances for this rule.
